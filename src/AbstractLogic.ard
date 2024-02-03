@@ -1,0 +1,57 @@
+\import Data.Array
+\import Logic
+\import Logic.FirstOrder.Term
+\import Logic.Meta
+
+\func Subset (U : \Set) => U -> \Prop
+
+\func \infix 9 in {U : \Set} (x : U) (s : Subset U) => s x
+
+\func empty {U : \Set} : Subset U => \lam _ => Empty
+
+\func union {U : \Set} (A B : Subset U) : Subset U => \lam x => x in A || x in B
+
+\func singleton {U : \Set} (x : U) => \lam y => x = y
+
+\func \infix 7 ⊆ {U : \Set} (A B : Subset U) : \Prop => \Pi (u : U) -> u in A -> u in B
+
+\func \infixl 5 add {U : \Set} (A : Subset U) (x : U) => union A (singleton x)
+
+\func add-monotone {U : \Set} (A B : Subset U) (x : U) (s : A ⊆ B) : (A add x) ⊆ (B add x) =>
+  \lam u u-in-A => \case\elim u-in-A \with {
+    | byLeft a => byLeft (s u a)
+    | byRight b => byRight b
+  }
+
+\func funExt {A : \Type} (B : A -> \Type) {f g : \Pi (a : A) -> B a}
+             (p : \Pi (a : A) -> f a = g a) : f = g => path (\lam i => \lam a => p a @ i)
+
+\func add-increasing {U : \Set} (A : Subset U) (x : U) : A ⊆ (A add x) =>
+  \lam y y-in-A => byLeft y-in-A
+
+\func add-increasing' {U : \Set} (x y : U) : singleton y ⊆ (singleton x add y) =>
+  \lam u u-is-y => byRight u-is-y
+
+
+-- An "(algebraic) language or similarity type"
+
+\class SingleSortedSignature \extends TermSig
+  | Sort => \Sigma
+  | arity : Symb () -> Nat
+  | domain op => mkArray {Sort} {arity op} (\lam _ => ())
+
+-- domain of variables is universally taken as the natural numbers
+-- this choice is largely arbitrary, but a countable (decidable?) set is requiered
+
+\func Language {L : SingleSortedSignature} => Term {L} (\lam _ => Nat) ()
+
+\record LangHom {L : SingleSortedSignature} (\coerce fun : Language -> Language)
+  | hom : \Pi (op : Symb ()) (args : DArray {arity op} (\lam _ => Language)) -> fun (apply op args) = apply op (map fun args)
+
+\class Logic {L : SingleSortedSignature}
+  | deriv-rel \alias \infix 8 ⊢ : Subset Language -> Language -> \Prop
+  | identity : \Pi (gamma : Subset Language) (phi : Language) -> (phi in gamma) -> gamma ⊢ phi
+  | monotonicity : \Pi {gamma delta : Subset Language} -> gamma ⊆ delta -> \Pi {phi : Language} -> gamma ⊢ phi -> delta ⊢ phi
+  | transitivity : \Pi {gamma delta : Subset Language} {phi : Language}
+  -> (\Pi (psi : Language) -> psi in gamma -> delta ⊢ psi) -> gamma ⊢ phi -> delta ⊢ phi
+  | structurality : \Pi (subst : LangHom) (gamma : Subset Language) (phi : Language) -> (gamma ⊢ phi) -> (\lam l => ∃ (psi : Language) (subst psi = l) (gamma ⊢ phi)) ⊢ subst phi

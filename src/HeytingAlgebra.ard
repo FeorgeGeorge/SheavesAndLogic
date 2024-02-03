@@ -1,5 +1,6 @@
-\import Data.Array
-\import Logic
+\import AbstractLogic (add, singleton)
+\import IntuitionsiticPropositionalCalculus
+\import Logic (byLeft, byRight)
 \import Logic.FirstOrder.Term
 \import Order.Lattice
 \import Order.PartialOrder
@@ -57,173 +58,6 @@
     implies-univ-left (meet-monotone' (_-==>-antimonotone p) <=∘ modus-ponens')
 }
 
--- Inutitionsitic Propositional Logic Signature
-
-\class SingleSortedSig \extends TermSig
-  | Sort => \Sigma
-  | arity : Symb () -> Nat
-  | domain op => mkArray {Sort} {arity op} (\lam _ => ())
-
-\data Connectives
-  | :==>
-  | :or
-  | :and
-  | :bottom
-
---- Intuitionistic Propositional Logic Signature
-
-\instance IPL-Signature : SingleSortedSig
-  | Sort => \Sigma
-  | Symb _ => Connectives
-  | arity x => \case\elim x \with {
-    | :==> => 2
-    | :or => 2
-    | :and => 2
-    | :bottom => 0
-  }
-
-\func IPL-Term => Term {IPL-Signature} (\lam _ => Nat) ()
-
-\func Subset (U : \Set) => U -> \Prop
-
-\func empty {U : \Set} : Subset U => \lam x => Empty
-
-\func union {U : \Set} (A B : Subset U) : Subset U => \lam x =>  A x || B x
-
-\func singleton {U : \Set} (x : U) => \lam y => x = y
-
-\func subs {U : \Set} (A B : Subset U) : \Prop => \Pi (u : U) -> A u -> B u
-
-\func \infixl 5 add {U : \Set} (A : Subset U) (x : U) => union A (singleton x)
-
-\func add-monotone {U : \Set} (A B : Subset U) (x : U) (s : subs A B) : subs (A add x) (B add x) =>
-  \lam u u-in-A => \case\elim u-in-A \with {
-    | byLeft a => byLeft (s u a)
-    | byRight b => byRight b
-  }
-
-\func funExt {A : \Type} (B : A -> \Type) {f g : \Pi (a : A) -> B a}
-             (p : \Pi (a : A) -> f a = g a) : f = g
-  => path (\lam i => \lam a => p a @ i)
-
---\func add-idempotent {U : \Set} (A : Subset U) (x : U) : A add x add x = A add x
---  => funExt {U} (\lam _ => \Prop) {A add x add x} {A add x} (\lam u =>
---      {?})
-
-\func add-increasing {U : \Set} (A : Subset U) (x : U) : subs A (A add x) =>
-  \lam y y-in-A => byLeft y-in-A
-
-\func add-increasing' {U : \Set} (x y : U) : subs (singleton y) (singleton x add y) =>
-  \lam u u-is-y => byRight u-is-y
-
--- Natural deduction
-
-\truncated \data IPL-Proof (Gamma : Subset IPL-Term) (result : IPL-Term) : \Prop
-\elim result
-  | apply :and (phi :: psi :: nil) => and-intro (IPL-Proof Gamma phi) (IPL-Proof Gamma psi)
-  | apply :or (phi :: _ :: nil) => or-intro-left (IPL-Proof Gamma phi)
-  | apply :or (_ :: psi :: nil) => or-intro-right (IPL-Proof Gamma psi)
-  | apply :==> (phi :: psi :: nil) => impl-intro (IPL-Proof (Gamma add phi) psi)
-
-  | phi => and-elim-left {psi : IPL-Term} (IPL-Proof Gamma (apply :and (phi :: psi :: nil)))
-  | psi => and-elim-right {phi : IPL-Term} (IPL-Proof Gamma (apply :and (phi :: psi :: nil)))
-  | ro => or-elim (phi psi : IPL-Term)
-                  (IPL-Proof (Gamma add phi) ro)
-                  (IPL-Proof (Gamma add psi) ro)
-                  (IPL-Proof Gamma (apply :or (phi :: psi :: nil)))
-  | psi => modus-ponens (phi : IPL-Term) (IPL-Proof Gamma (apply :==> (phi :: psi :: nil))) (IPL-Proof Gamma phi)
-  | phi => absurd (IPL-Proof Gamma (apply :bottom nil))
-  | phi => identity (Gamma phi)
-
--- Proof of phi |- phi -> phi
-\func test1 (phi : IPL-Term) : IPL-Proof empty (apply :==> (phi :: phi :: nil)) => impl-intro (identity (byRight idp))
-
-\func \infixl 6 -or (x y : IPL-Term) : IPL-Term => apply :or (x :: y :: nil)
-\func \infixl 7 -and (x y : IPL-Term) : IPL-Term => apply :and (x :: y :: nil)
-\func \infixl 8 -impl (x y : IPL-Term) : IPL-Term => apply :==> (x :: y :: nil)
-
-\func -bottom : IPL-Term => apply :bottom nil
-
-\func \infix 5 derives (phi psi : IPL-Term) => IPL-Proof (singleton phi) psi
-
-\func monotonicity {Gamma Delta : Subset IPL-Term} (s : subs Gamma Delta) {x : IPL-Term} (p : IPL-Proof Gamma x)
-  : IPL-Proof Delta x \elim x, p
-  | apply :and (phi :: (psi :: nil)), and-intro p1 p2
-  => and-intro (monotonicity s p1) (monotonicity s p2)
-  | apply :or (phi :: (a :: nil)), or-intro-left p => or-intro-left (monotonicity s p)
-  | apply :or (a :: (psi :: nil)), or-intro-right p => or-intro-right (monotonicity s p)
-  | apply :==> (phi :: (psi :: nil)), impl-intro p => impl-intro (monotonicity (add-monotone Gamma Delta phi s) p)
-  | y, and-elim-left p => and-elim-left (monotonicity s p)
-  | x, and-elim-right p => and-elim-right (monotonicity s p)
-  | x, or-elim phi psi p1 p2 p3 => or-elim phi psi
-      (monotonicity  (add-monotone Gamma Delta phi s) p1)
-      (monotonicity  (add-monotone Gamma Delta psi s) p2)
-      (monotonicity s p3)
-  | x, modus-ponens phi p1 p2 => modus-ponens phi (monotonicity s p1) (monotonicity s p2)
-  | x, absurd p => absurd (monotonicity s p)
-  | y, identity x => identity (s y x)
-
-\func monotonicity-lemma {x y z : IPL-Term} (y<=z : y derives z) : IPL-Proof (singleton y add x) z =>
-  monotonicity (add-increasing (singleton y) x) y<=z
-
-\func monotonicity-lemma' {x y z : IPL-Term} (y<=z : y derives z) : IPL-Proof (singleton x add y) z =>
-  monotonicity (add-increasing' x y) y<=z
-
-\func transitive {x y z : IPL-Term} (p : x derives y) (q : y derives z) : x derives z =>
-  modus-ponens y (impl-intro (monotonicity-lemma' q)) p
-
-\func LindenbaumSet => Quotient {IPL-Term} (\lam phi psi => \Sigma (phi derives psi) (psi derives phi))
-
-\func \infix 9 derives' (a b : LindenbaumSet) : \Prop \elim a, b
-  | in~ x, in~ y => x derives y
-  | in~ a, ~-equiv x y (x<=y, y<=x) => propExt (\lam a<=x => a<=x `transitive` x<=y) (\lam a<=y => a<=y `transitive` y<=x)
-  | ~-equiv x y (x<=y, y<=x), in~ a => propExt (\lam x<=a => y<=x `transitive` x<=a) (\lam y<=a => x<=y `transitive` y<=a)
-
-\func and-is-comm {x y : IPL-Term} : x -and y derives y -and x  =>
-  and-intro (and-elim-right (identity idp)) (and-elim-left (identity idp))
-
-\func and-is-monotone {a x y : IPL-Term} (x<=y : x derives y) : a -and x derives a -and y =>
-  and-intro (and-elim-left (identity idp)) (and-elim-right (identity idp) `transitive` x<=y)
-
-\func and-is-monotone' {a x y : IPL-Term} (x<=y : x derives y) : x -and a derives y -and a =>
-  and-is-comm `transitive` and-is-monotone x<=y `transitive` and-is-comm
-
-\func or-is-comm {x y : IPL-Term} : x -or y derives y -or x =>
-  or-elim x y (or-intro-right (identity (byRight idp))) (or-intro-left (identity (byRight idp))) (identity idp)
-
-\func or-is-monotone {a x y : IPL-Term} (x<=y : x derives y) : a -or x derives a -or y =>
-  or-elim a x (or-intro-left (identity (byRight idp)))
-      (or-intro-right (monotonicity-lemma' x<=y))
-      (identity idp)
-
-\func impl-intro-general {Gamma : Subset IPL-Term} {x y : IPL-Term} (x<=y : x derives y) : IPL-Proof Gamma (x -impl y) =>
-  impl-intro (monotonicity (\lam u u=x => byRight u=x) x<=y)
-
-\func or-is-monotone' {a x y : IPL-Term} (x<=y : x derives y) : x -or a derives y -or a =>
-  or-is-comm `transitive` or-is-monotone x<=y `transitive` or-is-comm
-
--- TODO: this must be redacted / refactored
-\func impl-is-monotone {a x y : IPL-Term} (x<=y : x derives y) : a -impl x derives a -impl y
-    => impl-intro (modus-ponens a (impl-intro lemma'') (identity (byRight idp))) \where {
-  \func lemma : IPL-Proof (singleton (a -impl x) add a) x =>
-    modus-ponens a (identity (byLeft idp)) (identity (byRight idp))
-
-  \func lemma' : IPL-Proof ((singleton (a -impl x) add a) add a) x =>
-    monotonicity (add-increasing (singleton (a -impl x) add a) a) lemma
-
-  \func lemma'' : IPL-Proof ((singleton (a -impl x) add a) add a) y =>
-    modus-ponens x (impl-intro-general x<=y) lemma'
-}
-
-\func impl-is-antimono {a x y : IPL-Term} (x<=y : x derives y) : y -impl a derives x -impl a
-  => impl-intro (modus-ponens y lemma' lemma)
-\where {
-  \func lemma : IPL-Proof (singleton (y -impl a) add x) y =>
-    monotonicity (\lam u x=u => byRight x=u) x<=y
-
-  \func lemma' : IPL-Proof (singleton (y -impl a) add x) (y -impl a) =>
-    identity (byLeft idp)
-}
 
 \instance LindenbaumAlgebra : HeytingAlebra LindenbaumSet
   | <= => derives'
@@ -231,7 +65,7 @@
     | in~ a => identity idp
   }
   | <=-transitive {x} {y} {z} =>\case\elim x, \elim y, \elim z \with {
-    | in~ x, in~ y, in~ z => \lam x<=y y<=z => x<=y `transitive` y<=z
+    | in~ x, in~ y, in~ z => \lam x<=y y<=z => x<=y `simple-transit` y<=z
   }
   | <=-antisymmetric {x} {y} => \case\elim x, \elim y \with {
     | in~ x, in~ y => \lam x<=y y<=x => \lam i => ~-equiv x y (x<=y, y<=x) i
@@ -262,10 +96,10 @@
   }
   | implies => implies'
   | implies-univ-left {a} {b} {x} => \case\elim a, \elim b, \elim x \with {
-    | in~ a, in~ b, in~ x => \lam a^b|-x => impl-intro (lemm' {a} {b} {x} a^b|-x)
+    | in~ a, in~ b, in~ x => \lam a^b|-x => impl-intro (a&b-implies-a-with-b {a} {b} {x} a^b|-x)
   }
   | implies-univ-right {a} {b} {x} => \case\elim a, \elim b, \elim x\with {
-    | in~ a, in~ b, in~ x => \lam a|-b=>x => modus-ponens b (x' a|-b=>x) (and-elim-right (identity idp))
+    | in~ a, in~ b, in~ x => \lam a|-b=>x => modus-ponens b (lemma a|-b=>x) (and-elim-right (identity idp))
   }
   \where {
     \func meet' (a b : LindenbaumSet) : LindenbaumSet\elim a, b
@@ -292,13 +126,12 @@
           (impl-is-antimono y<=x, impl-is-antimono x<=y)
           i
 
-    \func lemm {a b x : IPL-Term} : IPL-Proof (singleton a add b) (a -and b)
+    \func a-with-b-imply-a&b {a b x : IPL-Term} : IPL-Proof (singleton a add b) (a -and b)
       => and-intro (identity (byLeft idp)) (identity (byRight idp))
 
-    \func lemm' {a b x : IPL-Term} (a^b|-x : IPL-Proof (singleton (a -and b)) x) : IPL-Proof (singleton a add b) x
-      => modus-ponens (a -and b) (impl-intro-general a^b|-x) (lemm {a} {b} {x})
+    \func a&b-implies-a-with-b {a b x : IPL-Term} (a^b|-x : IPL-Proof (singleton (a -and b)) x) : IPL-Proof (singleton a add b) x
+      => modus-ponens (a -and b) (impl-intro-general a^b|-x) (a-with-b-imply-a&b {a} {b} {x})
 
-    \func x' {a b x : IPL-Term} (a|-b=>x : IPL-Proof (singleton a) (b -impl x)) : IPL-Proof (singleton (a -and b)) (b -impl x)
+    \func lemma {a b x : IPL-Term} (a|-b=>x : IPL-Proof (singleton a) (b -impl x)) : IPL-Proof (singleton (a -and b)) (b -impl x)
       => modus-ponens a (impl-intro-general a|-b=>x) (and-elim-left (identity idp))
-
   }
