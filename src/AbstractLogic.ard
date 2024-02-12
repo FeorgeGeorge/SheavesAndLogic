@@ -1,37 +1,13 @@
+\import Algebra.Domain.Euclidean
 \import Data.Array
 \import Logic
 \import Logic.FirstOrder.Term
 \import Logic.Meta
-
-\func Subset (U : \Set) => U -> \Prop
-
-\func \infix 9 in {U : \Set} (x : U) (s : Subset U) => s x
-
-\func empty {U : \Set} : Subset U => \lam _ => Empty
-
-\func union {U : \Set} (A B : Subset U) : Subset U => \lam x => x in A || x in B
-
-\func singleton {U : \Set} (x : U) => \lam y => x = y
-
-\func \infix 7 ⊆ {U : \Set} (A B : Subset U) : \Prop => \Pi (u : U) -> u in A -> u in B
-
-\func \infixl 5 add {U : \Set} (A : Subset U) (x : U) => union A (singleton x)
-
-\func add-monotone {U : \Set} (A B : Subset U) (x : U) (s : A ⊆ B) : (A add x) ⊆ (B add x) =>
-  \lam u u-in-A => \case\elim u-in-A \with {
-    | byLeft a => byLeft (s u a)
-    | byRight b => byRight b
-  }
-
-\func funExt {A : \Type} (B : A -> \Type) {f g : \Pi (a : A) -> B a}
-             (p : \Pi (a : A) -> f a = g a) : f = g => path (\lam i => \lam a => p a @ i)
-
-\func add-increasing {U : \Set} (A : Subset U) (x : U) : A ⊆ (A add x) =>
-  \lam y y-in-A => byLeft y-in-A
-
-\func add-increasing' {U : \Set} (x y : U) : singleton y ⊆ (singleton x add y) =>
-  \lam u u-is-y => byRight u-is-y
-
+\import Meta
+\import Misc
+\import Paths
+\import Set
+\import Subset
 
 -- An "(algebraic) language or similarity type"
 
@@ -40,18 +16,85 @@
   | arity : Symb () -> Nat
   | domain op => mkArray {Sort} {arity op} (\lam _ => ())
 
--- domain of variables is universally taken as the natural numbers
--- this choice is largely arbitrary, but a countable (decidable?) set is requiered
+-- Domain of variables is universally taken as the natural numbers
+-- (generally, a countable and decidable set is required)
 
-\func Language {L : SingleSortedSignature} => Term {L} (\lam _ => Nat) ()
+\func Language' {L : SingleSortedSignature} {V : DecSet} => Term {L} (\lam _ => V) ()
+
+\func var-inj {S : TermSig} {V : S -> \Set} {s : S} (a : V s) (b : V s) (eq : var {S} {V} a = var b)
+  : a = b =>
+  encode a (var b) eq
+  \where {
+    \func code (a0 : V s) (x : Term V s) : \Prop \elim x
+      | var v => a0 = v
+      | apply f d => Empty
+
+    \func encode (a0 : V s) (x : Term V s) (p : var a0 = x) : code a0 x =>
+      transport (code a0) p idp
+  }
+
+-- todo : consider refactoring this with Misc.ard to avoid duplicating decideArray
+
+\instance DecLanguage {L : SingleSortedSignature} {op-dec : DecSet (Symb ())} {V : DecSet} : DecSet (Language' {L} {V}) {
+  | decideEq => decideEq
+} \where {
+  \func decideEq (x y : Language' {L} {V}) : Dec (x = y) \elim x, y {
+    | var v, var v1 => cases (V.decideEq v v1) \with {
+      | yes e => yes (pmap var e)
+      | no n => no (\lam u => n (var-inj v v1 u))
+    }
+    | var v, apply f d => no (\lam u => contradiction)
+    | apply f d, var v => no (\lam u => contradiction)
+    | apply op1 d1, apply op2 d2 => cases (op-dec.decideEq op1 op2) \with {
+      | yes e => cases (decideArray d1 d2) \with {
+        | yes e1 => yes (pmap2 {Symb ()} {Array Language'} apply e e1)
+        | no n => no (\lam x => n (op-arg-inj x).2)
+      }
+      | no n => no (\lam s => n (op-arg-inj s).1)
+    }
+  }
+
+  \func decideArray (l1 l2 : Array (Language' {L} {V})) : Dec (l1 = l2)
+  \elim l1, l2
+    | nil, nil => yes idp
+    | nil, a :: l => no contradiction
+    | a :: l, nil => no contradiction
+    | a :: l1, b :: l2 => cases (decideEq a b) \with {
+      | yes e => cases (decideArray l1 l2) \with {
+        | yes l1=l2 => yes (help e l1=l2)
+        | no n => no (\lam x => n (decode l1 l2 (encode (a :: l1) (b :: l2) x).2))
+      }
+      | no n => no (\lam x => n (encode (a :: l1) (b :: l2) x).1)
+    }
+
+  \func op-arg-inj {op1 op2 : Symb {L} ()} {d1 : Array (Language' {L} {V}) (arity op1)}
+                   {d2 : Array (Language' {L} {V}) (arity op2)}
+                   (s : apply op1 d1 = apply op2 d2) : \Sigma (op1 = op2) (d1 = d2) => encode' op1 d1 (apply op2 d2) s
+
+  \func code' (op : Symb ()) (l : Array (Language' {L} {V})) (x : Language' {L} {V})
+    : \Prop\elim x
+    | var v => Empty
+    | apply f d => \Sigma (op = f) (l = d)
+
+  \func code'-idp (op : Symb ()) (l : Array (Language' {L} {V}) (arity op)) : code' op l (apply op l) => (idp, idp)
+
+  \func encode' (op : Symb ()) (l : Array (Language' {L} {V}) (arity op)) (x : Language'{L} {V}) (eq : apply op l = x)
+    : code' op l x => transport (code' op l) eq (code'-idp op l)
+}
+
+\func Language {L : SingleSortedSignature} => Language' {L} {NatEuclidean}
+
+\func Context {L : SingleSortedSignature} => Subset Language
+
+-- Language Hom specification
 
 \record LangHom {L : SingleSortedSignature} (\coerce fun : Language -> Language)
   | hom : \Pi (op : Symb ()) (args : DArray {arity op} (\lam _ => Language)) -> fun (apply op args) = apply op (map fun args)
 
 \class Logic {L : SingleSortedSignature}
-  | deriv-rel \alias \infix 8 ⊢ : Subset Language -> Language -> \Prop
-  | identity : \Pi (gamma : Subset Language) (phi : Language) -> (phi in gamma) -> gamma ⊢ phi
-  | monotonicity : \Pi {gamma delta : Subset Language} -> gamma ⊆ delta -> \Pi {phi : Language} -> gamma ⊢ phi -> delta ⊢ phi
-  | transitivity : \Pi {gamma delta : Subset Language} {phi : Language}
-  -> (\Pi (psi : Language) -> psi in gamma -> delta ⊢ psi) -> gamma ⊢ phi -> delta ⊢ phi
-  | structurality : \Pi (subst : LangHom) (gamma : Subset Language) (phi : Language) -> (gamma ⊢ phi) -> (\lam l => ∃ (psi : Language) (subst psi = l) (gamma ⊢ phi)) ⊢ subst phi
+  | deriv-rel \alias \infix 8 ⊢ : Context -> Language -> \Prop
+  | identity : \Pi (gamma : Context) (phi : Language) -> (phi in gamma) -> gamma ⊢ phi
+  | monotonicity : \Pi {G D : Context} -> G sub D -> \Pi {phi : Language} -> G ⊢ phi -> D ⊢ phi
+  | transitivity : \Pi {G D : Context} {phi : Language} -> (\Pi (psi : Language) -> psi in G -> D ⊢ psi) -> G ⊢ phi -> D ⊢ phi
+  | structurality : \Pi (subst : LangHom) (G : Context) (phi : Language) -> (G ⊢ phi)
+  -> (\lam l => ∃ (psi : Language) (subst psi = l) (G ⊢ phi)) ⊢ subst phi

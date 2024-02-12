@@ -1,0 +1,50 @@
+\import Logic
+\import Logic.Meta
+\import Meta
+\import Paths
+\import Set
+
+\func array-code {A : \Set} (l0 l1 : Array A) : \Prop
+  \elim l0, l1
+    | nil, nil => \Sigma
+    | nil, a :: l => Empty
+    | a :: l, nil => Empty
+    | a :: t0, a1 :: t1 => \Sigma (a = a1) (array-code t0 t1)
+
+\func encode-idp {A : \Set} (l : Array A) : array-code l l\elim l
+  | nil => ()
+  | a :: l => (idp, encode-idp l)
+
+\func encode {A : \Set} (l0 l1 : Array A) (eq : l0 = l1) : array-code l0 l1
+  \elim eq
+    | idp => \case\elim l0 \with {
+      | nil => ()
+      | a :: l => (idp, encode-idp l)
+    }
+
+\func decode {A : \Set} (l0 l1 : Array A) (eq : array-code l0 l1) : l0 = l1
+\elim l0, l1
+  | nil, nil => idp
+  | nil, a :: l => absurd eq
+  | a :: l, nil => absurd eq
+  | a :: l, a1 :: l1 => help eq.1 (decode l l1 eq.2)
+
+\func help {A : \Type} {a b : A} {l1 l2 : Array A} (eq : a = b) (eql : l1 = l2) : a :: l1 = b :: l2
+  => pmap2 {A} {Array A} (\lam x y => x :: y) eq eql
+
+\func decideArray {A : DecSet} (ll1 ll2 : Array A) : Dec (ll1 = ll2)
+  \elim ll1, ll2 {
+    | nil, nil => yes idp
+    | nil, a :: l => no contradiction
+    | a :: l, nil => no contradiction
+    | a :: l1, b :: l2 => cases (decideEq a b) \with {
+      | yes e => cases (decideArray l1 l2) \with {
+        | yes e1 => yes (help e e1)
+        | no n => no (\lam x => n (decode l1 l2 (encode (a :: l1) (b :: l2) x).2))
+      }
+      | no n => no (\lam x => n (encode (a :: l1) (b :: l2) x).1)
+    }
+  }
+
+\instance DecideArray {A : DecSet} : DecSet (Array A)
+  | decideEq => decideArray

@@ -2,6 +2,7 @@
 \import Logic
 \import Logic.FirstOrder.Term
 \import Relation.Equivalence
+\import Subset
 
 \data Connectives
   | :==>
@@ -51,11 +52,11 @@
 
 \func -bottom : IPL-Term => apply :bottom nil
 
-\func \infix 5 derives (phi psi : IPL-Term) => IPL-Proof (singleton phi) psi
+\func \infix 5 derives (phi psi : IPL-Term) => IPL-Proof (single phi) psi
 
 -- Monotonicity
 
-\func monotonicity {Gamma Delta : Subset IPL-Term} (s : Gamma ⊆ Delta) {x : IPL-Term} (p : IPL-Proof Gamma x)
+\func monotonicity {Gamma Delta : Subset IPL-Term} (s : Gamma sub Delta) {x : IPL-Term} (p : IPL-Proof Gamma x)
   : IPL-Proof Delta x \elim x, p
   | apply :and (phi :: (psi :: nil)), and-intro p1 p2
   => and-intro (monotonicity s p1) (monotonicity s p2)
@@ -72,10 +73,10 @@
   | x, absurd p => absurd (monotonicity s p)
   | y, identity x => identity (s y x)
 
-\func monotonicity-lemma {x y z : IPL-Term} (y<=z : y derives z) : IPL-Proof (singleton y add x) z =>
-  monotonicity (add-increasing (singleton y) x) y<=z
+\func monotonicity-lemma {x y z : IPL-Term} (y<=z : y derives z) : IPL-Proof (single y add x) z =>
+  monotonicity (add-increasing (single y) x) y<=z
 
-\func monotonicity-lemma' {x y z : IPL-Term} (y<=z : y derives z) : IPL-Proof (singleton x add y) z =>
+\func monotonicity-lemma' {x y z : IPL-Term} (y<=z : y derives z) : IPL-Proof (single x add y) z =>
   monotonicity (add-increasing' x y) y<=z
 
 \func simple-transit {x y z : IPL-Term} (p : x derives y) (q : y derives z) : x derives z =>
@@ -113,23 +114,23 @@
 
 \func impl-is-monotone {a x y : IPL-Term} (x<=y : x derives y) : a -impl x derives a -impl y =>
   impl-intro (modus-ponens a (impl-intro lemma'') (identity (byRight idp))) \where {
-  \func lemma : IPL-Proof (singleton (a -impl x) add a) x =>
+  \func lemma : IPL-Proof (single (a -impl x) add a) x =>
     modus-ponens a (identity (byLeft idp)) (identity (byRight idp))
 
-  \func lemma' : IPL-Proof ((singleton (a -impl x) add a) add a) x =>
-    monotonicity (add-increasing (singleton (a -impl x) add a) a) lemma
+  \func lemma' : IPL-Proof ((single (a -impl x) add a) add a) x =>
+    monotonicity (add-increasing (single (a -impl x) add a) a) lemma
 
-  \func lemma'' : IPL-Proof ((singleton (a -impl x) add a) add a) y =>
+  \func lemma'' : IPL-Proof ((single (a -impl x) add a) add a) y =>
     modus-ponens x (impl-intro-general x<=y) lemma'
 }
 
 \func impl-is-antimono {a x y : IPL-Term} (x<=y : x derives y) : y -impl a derives x -impl a =>
   impl-intro (modus-ponens y lemma' lemma)
   \where {
-    \func lemma : IPL-Proof (singleton (y -impl a) add x) y =>
+    \func lemma : IPL-Proof (single (y -impl a) add x) y =>
       monotonicity (\lam u x=u => byRight x=u) x<=y
 
-    \func lemma' : IPL-Proof (singleton (y -impl a) add x) (y -impl a) =>
+    \func lemma' : IPL-Proof (single (y -impl a) add x) (y -impl a) =>
       identity (byLeft idp)
   }
 
@@ -161,20 +162,20 @@
       }) g-phi-impl-psi
   }
 
--- todo: revisit. Substitution is defined by propositional equality, and should be defined as substitution definitionally
+-- todo: prove structurality for IPC
 \func structurality {subst : LangHom {IPL-Signature}} {gamma : Subset IPL-Term} (phi : IPL-Term) (g|-phi : IPL-Proof gamma phi)
   : IPL-Proof (\lam l => TruncP (\Sigma (psi : Language) (subst psi = l) (IPL-Proof gamma phi))) (subst phi)
-  \elim phi, g|-phi
-    | apply :and (phi :: (psi :: nil)), and-intro g|-phi g|-psi => {?}
-    | apply :or (phi :: (a :: nil)), or-intro-left g|-phi => {?}
-    | apply :or (a :: (psi :: nil)), or-intro-right g|-phi => {?}
-    | apply :==> (phi :: (psi :: nil)), impl-intro g|-phi => {?}
-    | phi, and-elim-left g|-phi => {?}
-    | phi, and-elim-right g|-phi => {?}
-    | phi, or-elim phi1 psi g|-phi1 g|-phi2 g|-phi3 => {?}
-    | phi, modus-ponens phi1 g|-phi1 g|-phi2 => {?}
-    | phi, absurd g|-phi => {?}
-    | phi, identity g => {?}
+\elim phi, g|-phi
+  | apply :and (phi :: (psi :: nil)), and-intro g|-phi g|-psi => {?}
+  | apply :or (phi :: (a :: nil)), or-intro-left g|-phi => {?}
+  | apply :or (a :: (psi :: nil)), or-intro-right g|-phi => {?}
+  | apply :==> (phi :: (psi :: nil)), impl-intro g|-phi => {?}
+  | phi, and-elim-left g|-phi => {?}
+  | phi, and-elim-right g|-phi => {?}
+  | phi, or-elim phi1 psi g|-phi1 g|-phi2 g|-phi3 => {?}
+  | phi, modus-ponens phi1 g|-phi1 g|-phi2 => {?}
+  | phi, absurd g|-phi => {?}
+  | phi, identity g => {?}
 
 \instance IntuitionisticProp : Logic {IPL-Signature}
   | deriv-rel => IPL-Proof

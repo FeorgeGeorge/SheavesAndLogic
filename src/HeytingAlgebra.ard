@@ -1,4 +1,3 @@
-\import AbstractLogic (add, singleton)
 \import IntuitionsiticPropositionalCalculus
 \import Logic (byLeft, byRight)
 \import Logic.FirstOrder.Term
@@ -6,6 +5,7 @@
 \import Order.PartialOrder
 \import Paths
 \import Relation.Equivalence
+\import Subset
 
 \lemma \infixr 8 =<= {E : Preorder} {x y z : E}
                      (p : x = y) (q : y <= z) : x <= z => transport (__ <= z) (inv p) q
@@ -71,13 +71,13 @@
     | in~ x, in~ y => \lam x<=y y<=x => \lam i => ~-equiv x y (x<=y, y<=x) i
   }
   | meet => meet'
-  | meet-left {x} {y} => \case\elim x, \elim y \with {
+  | meet-left {x} {y} => \case\elim x,\elim y\with {
     | in~ x, in~ y => and-elim-left (identity idp)
   }
-  | meet-right {x} {y} => \case\elim x, \elim y \with {
+  | meet-right {x} {y} => \case\elim x,\elim y \with {
     | in~ x, in~ y => and-elim-right (identity idp)
   }
-  | meet-univ {x} {y} {z} =>\case\elim x, \elim y, \elim z \with {
+  | meet-univ {x} {y} {z} =>\case\elim x,\elim y,\elim z \with {
     | in~ x, in~ y, in~ z => \lam z<=x z<=y => and-intro z<=x z<=y
   }
   | join => join'
@@ -126,12 +126,12 @@
           (impl-is-antimono y<=x, impl-is-antimono x<=y)
           i
 
-    \func a-with-b-imply-a&b {a b x : IPL-Term} : IPL-Proof (singleton a add b) (a -and b)
+    \func a-with-b-imply-a&b {a b x : IPL-Term} : IPL-Proof (single a add b) (a -and b)
       => and-intro (identity (byLeft idp)) (identity (byRight idp))
 
-    \func a&b-implies-a-with-b {a b x : IPL-Term} (a^b|-x : IPL-Proof (singleton (a -and b)) x) : IPL-Proof (singleton a add b) x
+    \func a&b-implies-a-with-b {a b x : IPL-Term} (a^b|-x : IPL-Proof (single (a -and b)) x) : IPL-Proof (single a add b) x
       => modus-ponens (a -and b) (impl-intro-general a^b|-x) (a-with-b-imply-a&b {a} {b} {x})
 
-    \func lemma {a b x : IPL-Term} (a|-b=>x : IPL-Proof (singleton a) (b -impl x)) : IPL-Proof (singleton (a -and b)) (b -impl x)
+    \func lemma {a b x : IPL-Term} (a|-b=>x : IPL-Proof (single a) (b -impl x)) : IPL-Proof (single (a -and b)) (b -impl x)
       => modus-ponens a (impl-intro-general a|-b=>x) (and-elim-left (identity idp))
   }

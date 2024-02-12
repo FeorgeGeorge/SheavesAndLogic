@@ -1,0 +1,53 @@
+\import Category
+\import Category.Functor
+\import Category.Subobj
+\import Category.Topos.Sheaf
+\import Order.PartialOrder
+\import Topology.Locale
+
+
+\func SubPresheave (C : SmallPrecat) (P : PresheafCat C) => Preorder.PosetC {SubobjPreorder {PresheafCat C} P}
+
+--\func meet {C : SmallPrecat} {obj : PresheafCat C} (A B : SubPresheave C obj) : SubPresheave C obj
+--  | {(Ob,Hom,id,o,id-left,id-right,o-assoc)}, in~ a, in~ b => {?}
+--  | {(Ob,Hom,id,o,id-left,id-right,o-assoc)}, in~ a, ~-equiv x y r i => {?}
+--  | {(Ob,Hom,id,o,id-left,id-right,o-assoc)}, ~-equiv x y r i, in~ a => {?}
+
+
+-- todo: prove that the subfunctors of a presheave constitute a frame
+
+--\func set-product (A B : \Set)
+--\func test {C : SmallPrecat} {P : PresheafCat C} (A : Subobj P) (X : \Set) : \Set
+
+
+\func meet' {C : SmallPrecat} {P : PresheafCat C} (A B : Subobj P) : Subobj P
+  | {C}, {P}, subobj A m-a, subobj B m-b => subobj (\new VPresheaf {
+    | F => \new Functor {
+      | F X => \Sigma (y : P X) (a : A X) (b : B X) (y = {?} a)
+      | Func => {?}
+      | Func-id => {?}
+      | Func-o => {?}
+    }
+  }) {?}
+
+
+\instance PresheaveLocale (C : SmallPrecat) (obj : PresheafCat C)
+: Locale (SubPresheave C obj)
+  | meet => {?}
+  | meet-left => {?}
+  | meet-right => {?}
+  | meet-univ => {?}
+  | top => {?}
+  | top-univ => {?}
+  | Join => {?}
+  | Join-cond => {?}
+  | Join-univ => {?}
+  | Join-ldistr>= => {?}
+  | <= => <= {SubPresheave C obj}
+  | <=-refl => <=-refl {SubPresheave C obj}
+  | <=-transitive => <=∘ {SubPresheave C obj}
+  | <=-antisymmetric => <=-antisymmetric {SubPresheave C obj}
+
+
+
+
