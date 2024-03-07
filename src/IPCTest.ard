@@ -1,8 +1,8 @@
-\import AbstractLogic (empty)
-\import IntuitionsiticPropositionalCalculus
+\import IntuitionisticPropositionalCalculus
 \import Logic (byRight)
 \import Logic.FirstOrder.Term
+\import Subset
 
 
--- Proof of phi |- phi -> phi
+-- Proof of phi |- phi -> phi for arbitrary term phi
 \func test1 (phi : IPL-Term) : IPL-Proof empty (apply :==> (phi :: phi :: nil)) => impl-intro (identity (byRight idp))

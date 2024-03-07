@@ -1,4 +1,4 @@
-\import IntuitionsiticPropositionalCalculus
+\import IntuitionisticPropositionalCalculus
 \import Logic (byLeft, byRight)
 \import Logic.FirstOrder.Term
 \import Order.Lattice

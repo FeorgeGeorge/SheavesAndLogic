@@ -1,38 +1,97 @@
 \import Category
 \import Category.Functor
+\import Category.Limit
 \import Category.Subobj
 \import Category.Topos.Sheaf
+\import Meta
 \import Order.PartialOrder
+\import Paths
+\import Paths.Meta
+\import Set.Category
 \import Topology.Locale
 
 
-\func SubPresheave (C : SmallPrecat) (P : PresheafCat C) => Preorder.PosetC {SubobjPreorder {PresheafCat C} P}
+\func functor-curry {C : SmallPrecat} {D : Cat} (J : Precat)
+                    (G : Functor (\levels obj _) J (FunctorCat {C} {D})) (c : C) : Functor J D => \new Functor {
+  | F j => (G j) c
+  | Func f => (G.Func f) c
+  | Func-id {X} => rewrite (G.Func-id {X}) idp
+  | Func-o => rewrite G.Func-o idp
+}
 
---\func meet {C : SmallPrecat} {obj : PresheafCat C} (A B : SubPresheave C obj) : SubPresheave C obj
---  | {(Ob,Hom,id,o,id-left,id-right,o-assoc)}, in~ a, in~ b => {?}
---  | {(Ob,Hom,id,o,id-left,id-right,o-assoc)}, in~ a, ~-equiv x y r i => {?}
---  | {(Ob,Hom,id,o,id-left,id-right,o-assoc)}, ~-equiv x y r i, in~ a => {?}
+\func has-limits  {J : Precat} (C : Cat) => \Pi (G : Functor J C) -> Limit G
 
-
--- todo: prove that the subfunctors of a presheave constitute a frame
-
---\func set-product (A B : \Set)
---\func test {C : SmallPrecat} {P : PresheafCat C} (A : Subobj P) (X : \Set) : \Set
-
-
-\func meet' {C : SmallPrecat} {P : PresheafCat C} (A B : Subobj P) : Subobj P
-  | {C}, {P}, subobj A m-a, subobj B m-b => subobj (\new VPresheaf {
-    | F => \new Functor {
-      | F X => \Sigma (y : P X) (a : A X) (b : B X) (y = {?} a)
-      | Func => {?}
-      | Func-id => {?}
-      | Func-o => {?}
+\func limit \plevels p2 <= p1 {C : SmallPrecat} {D : Cat} (J : Precat) (j-limit-in-D : has-limits \levels (p1, p2) _ {J} D)
+            (A : Functor J (FunctorCat {C} {D})) : Functor C D =>
+  \let L (c : C) => j-limit-in-D (functor-curry J A c)
+       | cone {X Y : C} (f : Hom X Y) : Cone (functor-curry J A Y)  => \new Cone {
+         | apex => Cone.apex {L X}
+         | coneMap j => Func f ∘ coneMap {L X} j
+         | coneCoh {i} {j} h => rewriteI (coneCoh {L X} h, o-assoc, o-assoc)
+             (pmap (__ ∘ coneMap i) (natural f))
+       } \in
+    \new Functor {
+      | F c => L c
+      | Func {X} {Y} f => limMap (cone f)
+      | Func-id {X} => limUnique (\lam j =>
+          rewrite id-right (limBeta {L X} {Cone.apex {L X}} (cone (id X)) j) *>
+          rewrite (id-right, id-right) (unfold (rewrite (Func-id {A j}, id-left) idp))
+      )
+      | Func-o {X} {Y} {Z} {f} {g} =>
+        limUnique (\lam j => rewrite (limBeta {L Z} (cone (f ∘ g)) j, inv o-assoc,
+                                      limBeta {L Z} (cone f) j) (unfold coneMap
+            (rewrite (Func-o {A j}, o-assoc, o-assoc) (rewrite (limBeta {L Y} (cone g) j) (unfold coneMap idp)))))
     }
-  }) {?}
 
+--\func alias' {C : Precat} (F : PresheafCat C) : FunctorCat {C.op} {SetCat}
+--  => \new Functor {
+--    | F X => F X
+--    | Func f => Func {F} f
+--    | Func-id => Func-id
+--    | Func-o => Func-o
+--  }
+--
+--\func alias {C : SmallPrecat} {J : Precat} (G : Functor (\suc obj) J (PresheafCat C))
+--  : Functor J (FunctorCat {Precat.op {C}} {SetCat})
+--\cowith
+--  | F j => alias' (G j)
+--  | Func {X} {Y} f => Func {G} f
+--  | Func-id => Func-id
+--  | Func-o => Func-o
+
+\instance FunctorCatComplete \plevels p2 <= p1 (C : SmallPrecat \levels (p1, p2) _) : CompleteCat
+  | Cat => FunctorCat {C} {SetCat}
+  | limit {J} G => \new Limit {
+    | apex => limit J {?} G
+    | coneMap => {?}
+    | coneCoh => {?}
+    | isLimit => {?}
+    | limMap => {?}
+    | limBeta => {?}
+    | limUnique => {?}
+  }
+
+
+--\instance PresheafComplete \plevels p5 <= p6 <= p2 <= p1 <= p3 <= p4 (C : SmallPrecat) : CompleteCat
+--  | Cat => PresheafCat \levels (p1, p2) _ C
+--  | limit {J} (G : Functor J (PresheafCat \levels (p1, p2) _ C)) => \new Limit {
+--    | apex => \new VPresheaf {
+--      | F => limit J (SetBicat.limit \levels (p3, p4) _) ({?})
+--    }
+--
+--    | coneMap => {?}
+--    | coneCoh => {?}
+--    | isLimit => {?}
+--    | limMap => {?}
+--    | limBeta => {?}
+--    | limUnique => {?}
+--  }
+
+\func SubPresheave (C : SmallPrecat) (P : PresheafCat C) => Preorder.PosetC {SubobjPreorder {PresheafCat C} P}
 
 \instance PresheaveLocale (C : SmallPrecat) (obj : PresheafCat C)
 : Locale (SubPresheave C obj)
+  | Poset => SubPresheave C obj
   | meet => {?}
   | meet-left => {?}
   | meet-right => {?}
@@ -43,11 +102,3 @@
   | Join-cond => {?}
   | Join-univ => {?}
   | Join-ldistr>= => {?}
-  | <= => <= {SubPresheave C obj}
-  | <=-refl => <=-refl {SubPresheave C obj}
-  | <=-transitive => <=∘ {SubPresheave C obj}
-  | <=-antisymmetric => <=-antisymmetric {SubPresheave C obj}
-
-
-
-

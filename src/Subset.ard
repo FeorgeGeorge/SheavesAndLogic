@@ -5,6 +5,8 @@
 
 \func Subset (U : \Set) => U -> \Prop
 
+\func empty {U : \Set} : Subset U => \lam _ => Empty
+
 \func \infix 9 in {U : \Set} (x : U) (s : Subset U) => s x
 
 \func union {U : \Set} (A B : Subset U) : Subset U => \lam x => x in A || x in B
@@ -34,5 +36,3 @@
 
 \func add-increasing' {U : \Set} (x y : U) : single y sub (single x add y) =>
   \lam u u-in-y => byRight u-in-y
-
-
