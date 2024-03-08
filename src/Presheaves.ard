@@ -9,11 +9,10 @@
 \import Paths
 \import Paths.Meta
 \import Set.Category
-\import Subset
 \import Topology.Locale
 
-\func functor-curry {C : SmallPrecat} {D : Cat} (J : Precat)
-                    (G : Functor (\levels obj _) J (FunctorCat {C} {D})) (c : C) : Functor J D => \new Functor {
+\func functor-at-point {C : SmallPrecat} {D : Cat} (J : Precat)
+                       (G : Functor (\levels obj _) J (FunctorCat {C} {D})) (c : C) : Functor J D => \new Functor {
   | F j => G j c
   | Func f => G.Func f c
   | Func-id {X} => rewrite (G.Func-id {X}) idp
@@ -24,8 +23,8 @@
                                 (j-limit-in-D : \Pi (G : Functor J D) -> Limit G)
                                 (A : Functor J (FunctorCat {C} {D}))
   : Limit A =>
-  \let L (c : C) => j-limit-in-D (functor-curry J A c)
-       | cone {X Y : C} (f : Hom X Y) : Cone (functor-curry J A Y)  => \new Cone {
+  \let L (c : C) => j-limit-in-D (functor-at-point J A c)
+       | cone {X Y : C} (f : Hom X Y) : Cone (functor-at-point J A Y)  => \new Cone {
          | apex => Cone.apex {L X}
          | coneMap j => Func f ∘ coneMap {L X} j
          | coneCoh {i} {j} h => rewriteI (coneCoh {L X} h, o-assoc, o-assoc)
@@ -43,43 +42,41 @@
                                          limBeta {L Z} (cone f) j) (unfold coneMap
                (rewrite (Func-o {A j}, o-assoc, o-assoc) (rewrite (limBeta {L Y} (cone g) j) (unfold coneMap idp)))))
        }
-       | trans-map (j : J) : Hom apex (A j) => \new NatTrans {
+       | cone-nat-map (j : J) : Hom apex (A j) => \new NatTrans {
          | trans c => coneMap {L c} j
          | natural {X} {Y} f => rewrite (limBeta {L Y} (cone f) j) idp
        }
        | cone-curry (X : C) (H : FunctorCat) (z-cone : Cone {J} A H)
-        : Cone (functor-curry J A X) (H X) => \new Cone {
+       : Cone (functor-at-point J A X) (H X) => \new Cone {
            | coneMap j => coneMap {z-cone} j X
            | coneCoh {i} {j} h => path (\lam i => ((coneCoh {z-cone} h) i) X)
          }
+       | lim-nat-map {z : FunctorCat} (z-cone : Cone A z) : Hom z apex =>
+         \new NatTrans {
+           | trans X => unfold apex $ limMap $ cone-curry X z z-cone
+           | natural {X} {Y} f => limUnique (\lam (j : J) => unfold
+                 $ rewrite (inv o-assoc, limBeta {L Y} (cone-curry Y z z-cone) j,
+                            inv o-assoc, limBeta {L Y} (cone f), o-assoc,
+                            limBeta {L X} (cone-curry X z z-cone))
+                     $ natural f
+               )
+         }
   \in \new Limit {
     | apex => apex
-    | coneMap => trans-map
+    | coneMap => cone-nat-map
     | coneCoh h => exts $ \lam X => coneCoh h
-    | limMap {z-func} z-cone => \new NatTrans {
-      | trans X => unfold apex $ limMap $ cone-curry X z-func z-cone
-      | natural f => {?}
-    }
-    | limBeta => {?}
-    | limUnique => {?}
+    | limMap => lim-nat-map
+    | limBeta {z} z-cone j => exts $ \lam X => unfold $ unfold $ rewrite (limBeta {L X} (cone-curry X z z-cone)) idp
+    | limUnique j-unique => exts $ \lam X => limUnique $ \lam j => path (\lam i => j-unique j i X)
   }
 
 
 -- there are issues with implementing apex here related to plevels that i can't solve
 -- should be easy enough to compile into CompleteCat instance once they are solved
 
---\instance FunctorCatComplete \plevels p (C : SmallPrecat \levels p _) : CompleteCat
---  | Cat => FunctorCat \levels (\suc p) _ {C} {SetCat \levels p _}
---  | limit {J} G => \new Limit {
---    | apex =>
---      limit J {?} {?}
---    | coneMap => {?}
---    | coneCoh => {?}
---    | isLimit => {?}
---    | limMap => {?}
---    | limBeta => {?}
---    | limUnique => {?}
---  }
+--\instance FunctorCatComplete \plevels obj >= hom (C : SmallPrecat) : CompleteCat
+--  | Cat => FunctorCat \levels (\suc obj) _ {C} {SetCat}
+--  | limit {J} G => limit J SetBicat.limit G
 
 \func SubPresheave (C : SmallPrecat) (P : PresheafCat C) => Preorder.PosetC {SubobjPreorder {PresheafCat C} P}
 
