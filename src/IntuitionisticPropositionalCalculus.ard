@@ -1,8 +1,8 @@
-\import AbstractLogic
 \import Logic
 \import Logic.FirstOrder.Term
+\import Logic.IntuitionisticProp.AbstractLogic (SingleSortedSignature, Logic)
+\import Logic.IntuitionisticProp.MySubset
 \import Relation.Equivalence
-\import Subset
 
 \data Connectives
   | :==>
@@ -135,7 +135,7 @@
   }
 
 \func transitivity {gamma delta : Subset IPL-Term} {phi : IPL-Term}
-                   (g-to-d : \Pi (psi : IPL-Term) -> psi in gamma -> IPL-Proof delta psi) (gamma-impl-phi : IPL-Proof gamma phi)
+                   (g-to-d : \Pi (psi : IPL-Term) -> psi in' gamma -> IPL-Proof delta psi) (gamma-impl-phi : IPL-Proof gamma phi)
   : IPL-Proof delta phi
 \elim phi, gamma-impl-phi
   | apply :and (phi :: (psi :: nil)), and-intro g-impl-phi g-impl-psi =>

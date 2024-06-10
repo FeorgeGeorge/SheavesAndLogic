@@ -1,63 +1,14 @@
-\import IntuitionisticPropositionalCalculus
-\import Logic (byLeft, byRight)
+\import Data.Or
+\import Function.Meta
+\import Logic (Empty, absurd, byLeft, byRight)
 \import Logic.FirstOrder.Term
+\import Logic.IntuitionsiticProp.IntuitionsiticPropositionalCalculus \hiding (absurd)
+\import Logic.IntuitionsiticProp.MySubset
+\import Meta
+\import Order.HeytingAlgebra
 \import Order.Lattice
-\import Order.PartialOrder
-\import Paths
 \import Relation.Equivalence
-\import Subset
-
-\lemma \infixr 8 =<= {E : Preorder} {x y z : E}
-                     (p : x = y) (q : y <= z) : x <= z => transport (__ <= z) (inv p) q
-
--- Models of Intuitionistic Logic
--- (1, 0) - topos
-
-\class HeytingAlebra \extends Bounded.DistributiveLattice {
-  | implies \alias \infixr 6 ==> : E -> E -> E
-  | implies-univ-left {x a b : E} : x ∧ a <= b -> x <= a ==> b
-  | implies-univ-right {x a b : E} : x <= a ==> b -> x ∧ a <= b
-  | top => bottom ==> bottom
-  | top-univ => implies-univ-left meet-right
-  | ldistr>= {x y z : E} =>  meet-comm
-    =<= implies-univ-right (join-univ (implies-univ-left (meet-comm =<= join-left))
-      (implies-univ-left (meet-comm =<= join-right)))
-
-  \lemma modus-ponens' {x y : E} : (x ==> y) ∧ x <= y => implies-univ-right <=-refl
-
-  \lemma modus-ponens {x y : E} : x ∧ (x ==> y) <= y => meet-comm =<= modus-ponens'
-
-  \lemma comositive-law {x y z : E} : (x ==> y) ∧ (y ==> z) <= x ==> z => implies-univ-left
-      (meet-assoc *> meet-comm *> meet-assoc
-        =<= meet-monotone <=-refl modus-ponens <=∘ modus-ponens')
-
-  \func continue (y : E) (x : E) => (x ==> y) ==> y
-
-  \func neg (x : E) => x ==> bottom
-
-  \func dneg => continue bottom
-
-  \func curry {x y z : E} : x ∧ y ==> z <= x ==> (y ==> z) =>
-    implies-univ-left (implies-univ-left (meet-assoc =<= modus-ponens'))
-
-  \func ==>-monotone {x y z : E} (p : y <= z) : x ==> y <= x ==> z => implies-univ-left (modus-ponens' <=∘ p)
-
-  \func ==>-increasing {x y : E} : y <= x ==> y => implies-univ-left meet-left
-
-  \lemma meet-monotone' {x y z : E} (p : y <= z) : x ∧ y <= x ∧ z => meet-monotone <=-refl p
-
-  \func _-==>-antimonotone {x y z : E} (p : y <= z) : z ==> x <= y ==> x =>
-    implies-univ-left (meet-monotone' p <=∘ modus-ponens')
-
-  \lemma double==>-increasing {x y : E} : x <= (x ==> y) ==> y => implies-univ-left modus-ponens
-
-  \lemma double==>-idempotent {x y : E} : (((x ==> y) ==> y) ==> y) ==> y <= (x ==> y) ==> y =>
-    implies-univ-left (meet-monotone' double==>-increasing <=∘ modus-ponens')
-
-  \lemma double==>-monotone {x y z : E} (p : y <= z) : continue x y <= continue x z =>
-    implies-univ-left (meet-monotone' (_-==>-antimonotone p) <=∘ modus-ponens')
-}
-
+\import Set \hiding (#)
 
 \instance LindenbaumAlgebra : HeytingAlebra LindenbaumSet
   | <= => derives'
@@ -95,10 +46,10 @@
     | in~ a => absurd (identity idp)
   }
   | implies => implies'
-  | implies-univ-left {a} {b} {x} => \case\elim a, \elim b, \elim x \with {
+  | exponent-left {a} {b} {x} => \case\elim a, \elim b, \elim x \with {
     | in~ a, in~ b, in~ x => \lam a^b|-x => impl-intro (a&b-implies-a-with-b {a} {b} {x} a^b|-x)
   }
-  | implies-univ-right {a} {b} {x} => \case\elim a, \elim b, \elim x\with {
+  | exponent-right {a} {b} {x} => \case\elim a, \elim b, \elim x\with {
     | in~ a, in~ b, in~ x => \lam a|-b=>x => modus-ponens b (lemma a|-b=>x) (and-elim-right (identity idp))
   }
   \where {
@@ -135,3 +86,27 @@
     \func lemma {a b x : IPL-Term} (a|-b=>x : IPL-Proof (single a) (b -impl x)) : IPL-Proof (single (a -and b)) (b -impl x)
       => modus-ponens a (impl-intro-general a|-b=>x) (and-elim-left (identity idp))
   }
+
+\func strong-compactify (E : DecSet) (H : Bounded.Lattice E) : Lattice
+  \cowith
+    | E => Or H (\Sigma)
+    | <= a b => \case\elim a, \elim b \with {
+      | inl a, inl b => cases (E.decideEq a H.top) \with {
+        | yes e => Empty
+        | no n => \Sigma
+      }
+      | _,  inr b => \Sigma
+      | inr b, inl a => Empty
+    }
+    | <=-refl {x} => mcases
+
+    | <=-transitive {x} {y} {z} x<=y y<=z => mcases
+    | <=-antisymmetric {x} {y} x<=y y<=z => mcases
+    | meet x y => {?}
+    | meet-left {x} {y} => {?}
+    | meet-right => {?}
+    | meet-univ => {?}
+    | join => {?}
+    | join-left => {?}
+    | join-right => {?}
+    | join-univ => {?}

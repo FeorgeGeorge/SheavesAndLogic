@@ -7,9 +7,9 @@
 
 \func empty {U : \Set} : Subset U => \lam _ => Empty
 
-\func \infix 9 in {U : \Set} (x : U) (s : Subset U) => s x
+\func \infix 9 in' {U : \Set} (x : U) (s : Subset U) => s x
 
-\func union {U : \Set} (A B : Subset U) : Subset U => \lam x => x in A || x in B
+\func union {U : \Set} (A B : Subset U) : Subset U => \lam x => x in' A || x in' B
 
 \func contained-bool {U : DecSet} (l : Array U) (x : U) : Bool
   => fold (\lam a b => decToBool (decideEq a x) or b) false l
@@ -18,7 +18,7 @@
 
 \func single {U : \Set} (x : U) : Subset U => \lam y => x = y
 
-\func \infix 7 sub {U : \Set} (A B : Subset U) : \Prop => \Pi (u : U) -> u in A -> u in B
+\func \infix 7 sub {U : \Set} (A B : Subset U) : \Prop => \Pi (u : U) -> u in' A -> u in' B
 
 \func \infixl 5 add {U : \Set} (A : Subset U) (x : U) => union A (single x)
 

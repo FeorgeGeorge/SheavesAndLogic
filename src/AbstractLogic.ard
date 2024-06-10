@@ -2,12 +2,12 @@
 \import Data.Array
 \import Logic
 \import Logic.FirstOrder.Term
+\import Logic.IntuitionsiticProp.Misc
+\import Logic.IntuitionsiticProp.MySubset (Subset, in', sub)
 \import Logic.Meta
 \import Meta
-\import Misc
 \import Paths
 \import Set
-\import Subset
 
 -- An "(algebraic) language or similarity type"
 
@@ -93,8 +93,8 @@
 
 \class Logic {L : SingleSortedSignature}
   | deriv-rel \alias \infix 8 ⊢ : Context -> Language -> \Prop
-  | identity : \Pi (gamma : Context) (phi : Language) -> (phi in gamma) -> gamma ⊢ phi
+  | identity : \Pi (gamma : Context) (phi : Language) -> phi in' gamma -> gamma ⊢ phi
   | monotonicity : \Pi {G D : Context} -> G sub D -> \Pi {phi : Language} -> G ⊢ phi -> D ⊢ phi
-  | transitivity : \Pi {G D : Context} {phi : Language} -> (\Pi (psi : Language) -> psi in G -> D ⊢ psi) -> G ⊢ phi -> D ⊢ phi
-  | structurality : \Pi (subst : LangHom) (G : Context) (phi : Language) -> (G ⊢ phi)
+  | transitivity : \Pi {G D : Context} {phi : Language} -> (\Pi (psi : Language) -> psi in' G -> D ⊢ psi) -> G ⊢ phi -> D ⊢ phi
+  | structurality : \Pi (subst : LangHom) (G : Context) (phi : Language) -> G ⊢ phi
   -> (\lam l => ∃ (psi : Language) (subst psi = l) (G ⊢ phi)) ⊢ subst phi
