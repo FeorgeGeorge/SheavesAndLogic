@@ -1,38 +1,34 @@
-\import Data.Array (fold)
-\import Data.Bool
 \import Logic
-\import Set \hiding (#)
+\import Set.Subset
 
-\func Subset (U : \Set) => U -> \Prop
+--\func Subset (U : \Set) => U -> \Prop
 
-\func empty {U : \Set} : Subset U => \lam _ => Empty
+\func empty {U : \Set} : Set U => \lam _ => Empty
 
-\func \infix 9 in' {U : \Set} (x : U) (s : Subset U) => s x
+\func \infix 9 in' {U : \Set} (x : U) (s : Set U) => s x
 
-\func union {U : \Set} (A B : Subset U) : Subset U => \lam x => x in' A || x in' B
+\func union {U : \Set} (A B : Set U) : Set U => \lam x => x in' A || x in' B
 
-\func contained-bool {U : DecSet} (l : Array U) (x : U) : Bool
-  => fold (\lam a b => decToBool (decideEq a x) or b) false l
+--\func contained-bool {U : DecSet} (l : Array U) (x : U) : Bool
+--  => fold (\lam a b => decToBool (decideEq a x) or b) false l
 
 --\func contained {U : \Set} (l : Array U) (x : U) : \Prop => fold (\lam a b => (a = x) || b) Empty l
 
-\func single {U : \Set} (x : U) : Subset U => \lam y => x = y
+--\func \infix 7 sub {U : \Set} (A B : Subset U) : \Prop => \Pi (u : U) -> u in' A -> u in' B
 
-\func \infix 7 sub {U : \Set} (A B : Subset U) : \Prop => \Pi (u : U) -> u in' A -> u in' B
+\func \infixl 5 add {U : \Set} (A : Set U) (x : U) => union A (single x)
 
-\func \infixl 5 add {U : \Set} (A : Subset U) (x : U) => union A (single x)
-
-\func add-monotone {U : \Set} (A B : Subset U) (x : U) (s : A sub B) : (A add x) sub (B add x) =>
-  \lam u u-in-A => \case\elim u-in-A \with {
-    | byLeft a => byLeft (s u a)
+\func add-monotone {U : \Set} (A B : Set U) (x : U) (s : A ⊆ B) : (A add x) ⊆ (B add x) =>
+  \lam {el} a => \case\elim a \with {
+    | byLeft a => byLeft (s a)
     | byRight b => byRight b
   }
 
-\func funExt {A : \Type} (B : A -> \Type) {f g : \Pi (a : A) -> B a}
-             (p : \Pi (a : A) -> f a = g a) : f = g => path (\lam i => \lam a => p a @ i)
+\func add-increasing {U : \Set} {A : Set U} {x : U} : A ⊆ (A add x) =>
+  \lam {_} s => byLeft s
 
-\func add-increasing {U : \Set} (A : Subset U) (x : U) : A sub (A add x) =>
-  \lam y y-in-A => byLeft y-in-A
+\func add-increasing' {U : \Set} {A : Set U} {x : U} : single x ⊆ A add x
+  => \lam {_} s => byRight s
 
-\func add-increasing' {U : \Set} (x y : U) : single y sub (single x add y) =>
-  \lam u u-in-y => byRight u-in-y
+--\func add-increasing' {U : \Set} (x y : U) : single y ⊆ (single x add y) =>
+--  add-increasing''

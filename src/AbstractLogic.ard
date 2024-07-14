@@ -2,12 +2,11 @@
 \import Data.Array
 \import Logic
 \import Logic.FirstOrder.Term
-\import Logic.IntuitionsiticProp.Misc
-\import Logic.IntuitionsiticProp.MySubset (Subset, in', sub)
+\import Logic.Propositional.MySubset
 \import Logic.Meta
-\import Meta
 \import Paths
 \import Set
+\import Set.Subset
 
 -- An "(algebraic) language or similarity type"
 
@@ -33,60 +32,9 @@
       transport (code a0) p idp
   }
 
--- todo : consider refactoring this with Misc.ard to avoid duplicating decideArray
-
-\instance DecLanguage {L : SingleSortedSignature} {op-dec : DecSet (Symb ())} {V : DecSet} : DecSet (Language' {L} {V}) {
-  | decideEq => decideEq
-} \where {
-  \func decideEq (x y : Language' {L} {V}) : Dec (x = y) \elim x, y {
-    | var v, var v1 => cases (V.decideEq v v1) \with {
-      | yes e => yes (pmap var e)
-      | no n => no (\lam u => n (var-inj v v1 u))
-    }
-    | var v, apply f d => no (\lam u => contradiction)
-    | apply f d, var v => no (\lam u => contradiction)
-    | apply op1 d1, apply op2 d2 => cases (op-dec.decideEq op1 op2) \with {
-      | yes e => cases (decideArray d1 d2) \with {
-        | yes e1 => yes (pmap2 {Symb ()} {Array Language'} apply e e1)
-        | no n => no (\lam x => n (op-arg-inj x).2)
-      }
-      | no n => no (\lam s => n (op-arg-inj s).1)
-    }
-  }
-
-  \func decideArray (l1 l2 : Array (Language' {L} {V})) : Dec (l1 = l2)
-  \elim l1, l2
-    | nil, nil => yes idp
-    | nil, a :: l => no contradiction
-    | a :: l, nil => no contradiction
-    | a :: l1, b :: l2 => cases (decideEq a b) \with {
-      | yes e => cases (decideArray l1 l2) \with {
-        | yes l1=l2 => yes (help e l1=l2)
-        | no n => no (\lam x => n (decode l1 l2 (encode (a :: l1) (b :: l2) x).2))
-      }
-      | no n => no (\lam x => n (encode (a :: l1) (b :: l2) x).1)
-    }
-
-  \func op-arg-inj {op1 op2 : Symb {L} ()} {d1 : Array (Language' {L} {V}) (arity op1)}
-                   {d2 : Array (Language' {L} {V}) (arity op2)}
-                   (s : apply op1 d1 = apply op2 d2) : \Sigma (op1 = op2) (d1 = d2) => encode' op1 d1 (apply op2 d2) s
-
-  \func code' (op : Symb ()) (l : Array (Language' {L} {V})) (x : Language' {L} {V})
-    : \Prop\elim x
-    | var v => Empty
-    | apply f d => \Sigma (op = f) (l = d)
-
-  \func code'-idp (op : Symb ()) (l : Array (Language' {L} {V}) (arity op)) : code' op l (apply op l) => (idp, idp)
-
-  \func encode' (op : Symb ()) (l : Array (Language' {L} {V}) (arity op)) (x : Language'{L} {V}) (eq : apply op l = x)
-    : code' op l x => transport (code' op l) eq (code'-idp op l)
-}
-
 \func Language {L : SingleSortedSignature} => Language' {L} {NatEuclidean}
 
-\func Context {L : SingleSortedSignature} => Subset Language
-
--- Language Hom specification
+\func Context {L : SingleSortedSignature} => Set (Language {L})
 
 \record LangHom {L : SingleSortedSignature} (\coerce fun : Language -> Language)
   | hom : \Pi (op : Symb ()) (args : DArray {arity op} (\lam _ => Language)) -> fun (apply op args) = apply op (map fun args)
@@ -94,7 +42,7 @@
 \class Logic {L : SingleSortedSignature}
   | deriv-rel \alias \infix 8 ⊢ : Context -> Language -> \Prop
   | identity : \Pi (gamma : Context) (phi : Language) -> phi in' gamma -> gamma ⊢ phi
-  | monotonicity : \Pi {G D : Context} -> G sub D -> \Pi {phi : Language} -> G ⊢ phi -> D ⊢ phi
+  | monotonicity : \Pi {G D : Context} -> G ⊆ D -> \Pi {phi : Language} -> G ⊢ phi -> D ⊢ phi
   | transitivity : \Pi {G D : Context} {phi : Language} -> (\Pi (psi : Language) -> psi in' G -> D ⊢ psi) -> G ⊢ phi -> D ⊢ phi
   | structurality : \Pi (subst : LangHom) (G : Context) (phi : Language) -> G ⊢ phi
   -> (\lam l => ∃ (psi : Language) (subst psi = l) (G ⊢ phi)) ⊢ subst phi

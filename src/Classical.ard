@@ -1,0 +1,52 @@
+\import Data.Bool
+\import Logic.FirstOrder.Term
+\import Logic.Propositional.AbstractLogic (SingleSortedSignature)
+\import Logic.Propositional.MySubset
+\import Meta
+\import Set.Subset
+
+
+-- Classical logic language
+
+\data Connectives
+  | :==>
+  | :or
+  | :and
+  | :neg
+
+\instance CPL-Signature : SingleSortedSignature
+  | Sort => \Sigma
+  | Symb _ => Connectives
+  | arity x => \case\elim x \with {
+    | :==> => 2
+    | :or => 2
+    | :and => 2
+    | :neg => 1
+  }
+
+\func CPL-Term {V : \Set} => Term {CPL-Signature} (\lam _ => V) ()
+
+\func evaluate {V : \Set} (var-eval : V -> Bool) (f : CPL-Term {V}) : Bool => eval f
+  \where {
+    \func eval (f : CPL-Term {V}) : Bool
+    \elim f
+      | var v => var-eval v
+      | apply f d => help f d
+
+    \func help (f : Symb ()) (d : Array (Term (\lam _ => V) ()) (DArray.len {domain f}))
+      : Bool
+    \elim f, d
+      | :==>, a :: b :: nil => if (eval a) (eval b) true
+      | :or, a :: b :: nil => or (eval a) (eval b)
+      | :and, a :: b :: nil => and (eval a) (eval b)
+      | :neg, a :: nil => not (eval a)
+  }
+
+-- Classical logic algebraic semantics
+
+\func CPL-Valid (V : \Set) (Gamma : Set (CPL-Term {V})) (result : CPL-Term {V}) : \Prop
+  => \Pi (var-eval : V -> Bool) -> (\Pi (g : CPL-Term {V}) (ingamma : g in' Gamma) -> evaluate var-eval g = true) -> evaluate var-eval result = true
+
+-- it's obvious properties don not seem to be interesting here
+
+\truncated\data  CPC-Proof (V : \Set) (Gamma : Set (CPL-Term {V})) (result : CPL-Term {V}) : \Prop

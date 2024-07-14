@@ -1,8 +1,9 @@
 \import Logic
 \import Logic.FirstOrder.Term
-\import Logic.IntuitionisticProp.AbstractLogic (SingleSortedSignature, Logic)
-\import Logic.IntuitionisticProp.MySubset
+\import Logic.Propositional.AbstractLogic (SingleSortedSignature, Logic)
+\import Logic.Propositional.MySubset
 \import Relation.Equivalence
+\import Set.Subset (Set, single, ⊆)
 
 \data Connectives
   | :==>
@@ -25,9 +26,9 @@
 \func IPL-Term => Term {IPL-Signature} (\lam _ => Nat) ()
 
 
--- Natural deduction
+-- Intuitionistic propositional calculus using natural deduction
 
-\truncated \data IPL-Proof (Gamma : Subset IPL-Term) (result : IPL-Term) : \Prop
+\truncated \data IPL-Proof (Gamma : Set IPL-Term) (result : IPL-Term) : \Prop
 \elim result
   | apply :and (phi :: psi :: nil) => and-intro (IPL-Proof Gamma phi) (IPL-Proof Gamma psi)
   | apply :or (phi :: _ :: nil) => or-intro-left (IPL-Proof Gamma phi)
@@ -56,13 +57,13 @@
 
 -- Monotonicity
 
-\func monotonicity {Gamma Delta : Subset IPL-Term} (s : Gamma sub Delta) {x : IPL-Term} (p : IPL-Proof Gamma x)
+\func monotonicity {Gamma Delta : Set IPL-Term} (s : Gamma ⊆ Delta) {x : IPL-Term} (p : IPL-Proof Gamma x)
   : IPL-Proof Delta x \elim x, p
-  | apply :and (phi :: (psi :: nil)), and-intro p1 p2
+  | apply :and (phi :: psi :: nil), and-intro p1 p2
   => and-intro (monotonicity s p1) (monotonicity s p2)
-  | apply :or (phi :: (a :: nil)), or-intro-left p => or-intro-left (monotonicity s p)
-  | apply :or (a :: (psi :: nil)), or-intro-right p => or-intro-right (monotonicity s p)
-  | apply :==> (phi :: (psi :: nil)), impl-intro p => impl-intro (monotonicity (add-monotone Gamma Delta phi s) p)
+  | apply :or (phi :: a :: nil), or-intro-left p => or-intro-left (monotonicity s p)
+  | apply :or (a :: psi :: nil), or-intro-right p => or-intro-right (monotonicity s p)
+  | apply :==> (phi :: psi :: nil), impl-intro p => impl-intro (monotonicity (add-monotone Gamma Delta phi s) p)
   | y, and-elim-left p => and-elim-left (monotonicity s p)
   | x, and-elim-right p => and-elim-right (monotonicity s p)
   | x, or-elim phi psi p1 p2 p3 => or-elim phi psi
@@ -71,13 +72,13 @@
       (monotonicity s p3)
   | x, modus-ponens phi p1 p2 => modus-ponens phi (monotonicity s p1) (monotonicity s p2)
   | x, absurd p => absurd (monotonicity s p)
-  | y, identity x => identity (s y x)
+  | y, identity x => identity (s x)
 
 \func monotonicity-lemma {x y z : IPL-Term} (y<=z : y derives z) : IPL-Proof (single y add x) z =>
-  monotonicity (add-increasing (single y) x) y<=z
+  monotonicity (add-increasing {_} {single y} {x}) y<=z
 
 \func monotonicity-lemma' {x y z : IPL-Term} (y<=z : y derives z) : IPL-Proof (single x add y) z =>
-  monotonicity (add-increasing' x y) y<=z
+  monotonicity add-increasing' y<=z
 
 \func simple-transit {x y z : IPL-Term} (p : x derives y) (q : y derives z) : x derives z =>
   modus-ponens y (impl-intro (monotonicity-lemma' q)) p
@@ -106,8 +107,8 @@
       (or-intro-right (monotonicity-lemma' x<=y))
       (identity idp)
 
-\func impl-intro-general {Gamma : Subset IPL-Term} {x y : IPL-Term} (x<=y : x derives y) : IPL-Proof Gamma (x -impl y) =>
-  impl-intro (monotonicity (\lam u u=x => byRight u=x) x<=y)
+\func impl-intro-general {Gamma : Set IPL-Term} {x y : IPL-Term} (x<=y : x derives y) : IPL-Proof Gamma (x -impl y) =>
+  impl-intro (monotonicity add-increasing' x<=y)
 
 \func or-is-monotone' {a x y : IPL-Term} (x<=y : x derives y) : x -or a derives y -or a =>
   or-is-comm `simple-transit` or-is-monotone x<=y `simple-transit` or-is-comm
@@ -118,7 +119,7 @@
     modus-ponens a (identity (byLeft idp)) (identity (byRight idp))
 
   \func lemma' : IPL-Proof ((single (a -impl x) add a) add a) x =>
-    monotonicity (add-increasing (single (a -impl x) add a) a) lemma
+    monotonicity (add-increasing {_} {single (a -impl x) add a} {a}) lemma
 
   \func lemma'' : IPL-Proof ((single (a -impl x) add a) add a) y =>
     modus-ponens x (impl-intro-general x<=y) lemma'
@@ -128,21 +129,21 @@
   impl-intro (modus-ponens y lemma' lemma)
   \where {
     \func lemma : IPL-Proof (single (y -impl a) add x) y =>
-      monotonicity (\lam u x=u => byRight x=u) x<=y
+      monotonicity add-increasing' x<=y
 
     \func lemma' : IPL-Proof (single (y -impl a) add x) (y -impl a) =>
       identity (byLeft idp)
   }
 
-\func transitivity {gamma delta : Subset IPL-Term} {phi : IPL-Term}
+\func transitivity {gamma delta : Set IPL-Term} {phi : IPL-Term}
                    (g-to-d : \Pi (psi : IPL-Term) -> psi in' gamma -> IPL-Proof delta psi) (gamma-impl-phi : IPL-Proof gamma phi)
   : IPL-Proof delta phi
 \elim phi, gamma-impl-phi
-  | apply :and (phi :: (psi :: nil)), and-intro g-impl-phi g-impl-psi =>
+  | apply :and (phi :: psi :: nil), and-intro g-impl-phi g-impl-psi =>
     and-intro (transitivity g-to-d g-impl-phi) (transitivity g-to-d g-impl-psi)
-  | apply :or (phi :: (a :: nil)), or-intro-left g-impl-phi =>
+  | apply :or (phi :: a :: nil), or-intro-left g-impl-phi =>
     or-intro-left (transitivity g-to-d g-impl-phi)
-  | apply :or (a :: (psi :: nil)), or-intro-right g-impl-psi =>
+  | apply :or (a :: psi :: nil), or-intro-right g-impl-psi =>
     or-intro-right (transitivity g-to-d g-impl-psi)
   | apply :==> (phi :: (psi :: nil)), impl-intro g-phi-impl-psi =>
     impl-intro (lemma g-phi-impl-psi)
@@ -157,7 +158,7 @@
   \where {
     \func lemma {phi psi : IPL-Term} (g-phi-impl-psi : IPL-Proof (gamma add phi) psi) : IPL-Proof (delta add phi) psi =>
       transitivity (\lam x x-in-g-or-phi => \case x-in-g-or-phi \with {
-        | byLeft in-g => monotonicity (add-increasing delta phi) (g-to-d x in-g)
+        | byLeft in-g => monotonicity (add-increasing {_} {delta} {phi}) (g-to-d x in-g)
         | byRight x-is-phi => identity (byRight x-is-phi)
       }) g-phi-impl-psi
   }
@@ -177,9 +178,8 @@
 --  | phi, absurd g|-phi => {?}
 --  | phi, identity g => {?}
 
-\instance IntuitionisticProp : Logic {IPL-Signature}
-  | deriv-rel => IPL-Proof
-  | identity gamma phi phi-in-gamma => identity phi-in-gamma
+\instance IntuitionisticProp : Logic {IPL-Signature} IPL-Proof
+  | identity _ _ phi-in-gamma => identity phi-in-gamma
   | monotonicity => monotonicity
   | transitivity => transitivity
   | structurality => {?}

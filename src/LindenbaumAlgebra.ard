@@ -2,8 +2,8 @@
 \import Function.Meta
 \import Logic (Empty, absurd, byLeft, byRight)
 \import Logic.FirstOrder.Term
-\import Logic.IntuitionsiticProp.IntuitionsiticPropositionalCalculus \hiding (absurd)
-\import Logic.IntuitionsiticProp.MySubset
+\import Logic.Propositional.IntuitionisticPropCalculus \hiding (absurd)
+\import Logic.Propositional.MySubset
 \import Meta
 \import Order.HeytingAlgebra
 \import Order.Lattice
