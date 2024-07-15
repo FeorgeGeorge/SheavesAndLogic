@@ -1,8 +1,10 @@
+\import Category.Functor
 \import Data.Bool
+\import Function.Meta
 \import Logic.FirstOrder.Term
 \import Logic.Propositional.AbstractLogic (SingleSortedSignature)
 \import Logic.Propositional.MySubset
-\import Meta
+\import Order.PartialOrder
 \import Set.Subset
 
 
@@ -42,11 +44,89 @@
       | :neg, a :: nil => not (eval a)
   }
 
+\func \infixl 6 -or {V : \Set} (x y : CPL-Term {V}) : CPL-Term {V} => apply :or (x :: y :: nil)
+
+\func \infixl 7 -and {V : \Set} (x y : CPL-Term {V}) : CPL-Term {V} => apply :and (x :: y :: nil)
+
+\func \infixr 8 -impl {V : \Set} (x y : CPL-Term {V}) : CPL-Term {V} => apply :==> (x :: y :: nil)
+
+\func -not {V : \Set} (x : CPL-Term {V}) => apply :neg (x :: nil)
+
 -- Classical logic algebraic semantics
 
-\func CPL-Valid (V : \Set) (Gamma : Set (CPL-Term {V})) (result : CPL-Term {V}) : \Prop
-  => \Pi (var-eval : V -> Bool) -> (\Pi (g : CPL-Term {V}) (ingamma : g in' Gamma) -> evaluate var-eval g = true) -> evaluate var-eval result = true
+\func CPL-Valid (V : \Set) (Gamma : Set (CPL-Term {V})) (result : CPL-Term {V}) : \Prop =>
+  \Pi (var-eval : V -> Bool) -> (\Pi (g : CPL-Term {V}) (ingamma : g in' Gamma) -> evaluate var-eval g = true) -> evaluate var-eval result = true
 
--- it's obvious properties don not seem to be interesting here
+-- it's obvious properties do not seem to be interesting here
 
-\truncated\data  CPC-Proof (V : \Set) (Gamma : Set (CPL-Term {V})) (result : CPL-Term {V}) : \Prop
+\truncated \data isAxiomScheme (V : \Set) (result : CPL-Term {V}) : \Prop
+  | impl-intro {A B : CPL-Term {V}} (result = (A -impl (B -impl A)))
+  | impl-elim {A B C : CPL-Term {V}} (result = (A -impl B) -impl (A -impl B -impl C) -impl A -impl C)
+  | and-elim1 {A B : CPL-Term {V}} (result = (A -and B) -impl A)
+  | and-elim2 {A B : CPL-Term {V}} (result = (A -and B) -impl B)
+  | and-intro {A B : CPL-Term {V}} (result = A -impl B -impl (A -and B))
+  | or-intro1 {A B : CPL-Term {V}} (result = A -impl (A -or B))
+  | or-intro2 {A B : CPL-Term {V}} (result = B -impl (A -or B))
+  | or-elim {A B C : CPL-Term {V}} (result = (A -impl C) -impl (B -impl C) -impl (A -or B) -impl C)
+  | not-intro {A B : CPL-Term {V}} (result = (A -impl B) -impl (A -impl -not B))
+  | not-elim {A : CPL-Term {V}} (result = -not (-not A) -impl A)
+  \where {
+    \func impl-intro' (A B : CPL-Term {V}) : isAxiomScheme V (A -impl (B -impl A)) => impl-intro idp
+
+    \func impl-elim' (A B C : CPL-Term {V}) : isAxiomScheme V ((A -impl B) -impl (A -impl B -impl C) -impl A -impl C) =>
+      impl-elim idp
+  }
+
+-- todo: this definition is imperfect, as it presupposes a langugae (CPL). consider making it more universal
+\record CalculusWithImpl (V : \Set) (calculus : Functor (SetLattice (CPL-Term {V})) (SetLattice (CPL-Term {V})))
+  | impl-intro-scheme : \Pi (A B : CPL-Term {V}) -> calculus empty (A -impl (B -impl A))
+  | impl-elim-scheme : \Pi (A B C : CPL-Term {V}) -> calculus empty ((A -impl B) -impl (A -impl B -impl C) -impl A -impl C)
+  | mp-rule : \Pi {Gamma : Set (CPL-Term {V})} -> \Pi {a b : CPL-Term {V}} ->
+      \Pi (a-proof : calculus Gamma a) (a=>b-proof : calculus Gamma (a -impl b)) -> calculus Gamma b
+\where {
+  -- testing that it works
+  \func impl-self (V : \Set) (calc : CalculusWithImpl V) (A : CPL-Term {V}) : calc.calculus empty (A -impl A) =>
+    \let | s1 => calc.impl-elim-scheme A (A -impl A) A
+         | s2 => calc.impl-intro-scheme A A
+         | s3 => calc.mp-rule s2 s1
+         | s4 => calc.impl-intro-scheme A (A -impl A)
+    \in calc.mp-rule s4 s3
+
+  \func deduction (V : \Set) (calc : CalculusWithImpl V) (Gamma : Set (CPL-Term {V})) (A B : CPL-Term {V})
+    (p : calc.calculus (Gamma add A) B) : CPC-Proof V Gamma (A -impl B)
+    => {?}
+
+--      | is-scheme i => \let s1 => calc.impl-intro-scheme B A
+--                       | s1' => calc.calculus.Func (empty-included Gamma) s1
+--                       | s0 => calc.
+--                       | s2 => calc.mp-rule {Gamma} {B} {A -impl B} {?} s1' \in {?}
+--      | is-hypothesis i => {?}
+--      | modus-ponens psi p1 p2 => {?}
+}
+\truncated\data CPC-Proof (V : \Set) (Gamma : Set (CPL-Term {V})) (result : CPL-Term {V}) : \Prop
+  | is-scheme (isAxiomScheme V result)
+  | is-hypothesis (result in' Gamma)
+  | modus-ponens (psi : CPL-Term {V}) (CPC-Proof V Gamma psi) (CPC-Proof V Gamma (psi -impl result))
+
+-- Monotonicity of classical propositioncal calculus
+\func c-monotone (V : \Set) : Functor (SetLattice (CPL-Term {V})) (SetLattice (CPL-Term {V})) (CPC-Proof V)
+  => monotone-map (CPC-Proof V) (\lam g<=d => \lam c => mono {V} g<=d c)
+\where {
+  \func mono {Gamma Delta : Set (CPL-Term {V})} (g<=d : Gamma ⊆ Delta)
+    {x : CPL-Term {V}} (proof : CPC-Proof V Gamma x) : CPC-Proof V Delta x
+    \elim x, proof
+      | _, is-scheme i => is-scheme i
+      | _, is-hypothesis i => is-hypothesis (g<=d i)
+      | x, modus-ponens psi proof1 proof2 => modus-ponens psi (mono {V} g<=d {psi} proof1) (mono {V} g<=d {psi -impl x} proof2)
+}
+
+\func cpc-with-impl (V : \Set) : CalculusWithImpl V (c-monotone V)
+  \cowith
+    | impl-intro-scheme A B => is-scheme $ isAxiomScheme.impl-intro' A B
+    | impl-elim-scheme A B C => is-scheme $ isAxiomScheme.impl-elim' A B C
+    | mp-rule {_} {a} {_} pr1 pr2 => modus-ponens a pr1 pr2
+
+\func impl-self (V : \Set) (A : CPL-Term {V}) : CPC-Proof V empty (A -impl A)
+  => CalculusWithImpl.impl-self V (cpc-with-impl V) A
+
+-- корректность

@@ -9,6 +9,8 @@
 
 \func union {U : \Set} (A B : Set U) : Set U => \lam x => x in' A || x in' B
 
+\func empty-included {U : \Set} (A : Set U) : empty ⊆ A
+  => \lam {x} e => absurd e
 --\func contained-bool {U : DecSet} (l : Array U) (x : U) : Bool
 --  => fold (\lam a b => decToBool (decideEq a x) or b) false l
 

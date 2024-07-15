@@ -1,5 +1,4 @@
 \import Data.Or
-\import Function.Meta
 \import Logic (Empty, absurd, byLeft, byRight)
 \import Logic.FirstOrder.Term
 \import Logic.Propositional.IntuitionisticPropCalculus \hiding (absurd)
@@ -9,6 +8,7 @@
 \import Order.Lattice
 \import Relation.Equivalence
 \import Set \hiding (#)
+\import Set.Subset (single)
 
 \instance LindenbaumAlgebra : HeytingAlebra LindenbaumSet
   | <= => derives'
